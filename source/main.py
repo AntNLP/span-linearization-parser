@@ -16,6 +16,7 @@ import makehp
 import Lparser
 import utils
 import json
+
 tokens = Lparser
 
 
@@ -41,21 +42,16 @@ def make_hparams():
     return makehp.HParams(
         max_len_train=0,  # no length limit
         max_len_dev=0,  # no length limit
-
         sentence_max_len=300,
-
         learning_rate=0.0008,
         learning_rate_warmup_steps=160,
-        clip_grad_norm=0.,  # no clipping
+        clip_grad_norm=0.0,  # no clipping
         step_decay=True,  # note that disabling step decay is not implemented
         step_decay_factor=0.5,
         step_decay_patience=5,
-
         partitioned=True,
-
         use_cat=False,
         const_lada=0.5,
-
         num_layers=12,
         d_model=1024,
         num_heads=8,
@@ -63,12 +59,10 @@ def make_hparams():
         d_ff=2048,
         d_label_hidden=250,
         d_biaffine=1024,
-
         attention_dropout=0.33,
         embedding_dropout=0.33,
         relu_dropout=0.33,
         residual_dropout=0.33,
-
         use_tags=False,
         use_words=False,
         use_elmo=False,
@@ -76,24 +70,19 @@ def make_hparams():
         use_xlnet=False,
         use_bert_only=False,
         use_chars_lstm=False,
-
-        dataset='ptb',
-
+        dataset="ptb",
         model_name="joint",
         # ['glove','sskip','random']
-        embedding_type='glove',
+        embedding_type="glove",
         embedding_path="./data/glove/glove.gz",
-        punctuation='.' '``' "''" ':' ',',
-
+        punctuation="." "``" "''" ":" ",",
         d_char_emb=64,
-
         tag_emb_dropout=0.33,
         word_emb_dropout=0.33,
         morpho_emb_dropout=0.33,
         timing_dropout=0.0,
         char_lstm_input_dropout=0.33,
         elmo_dropout=0.5,
-
         bert_model_path="./data/bert/large-uncased",
         bert_do_lower_case=True,
         bert_transliterate="",
@@ -119,22 +108,28 @@ def run_train(args, hparams):
     train_path = args.train_ptb_path
     dev_path = args.dev_ptb_path
 
-    if hparams.dataset == 'ctb':
+    if hparams.dataset == "ctb":
         train_path = args.train_ctb_path
         dev_path = args.dev_ctb_path
 
     print("Loading training trees from {}...".format(train_path))
     train_treebank = trees.load_trees(train_path)
     if hparams.max_len_train > 0:
-        train_treebank = [tree for tree in train_treebank if len(
-            list(tree.leaves())) <= hparams.max_len_train]
+        train_treebank = [
+            tree
+            for tree in train_treebank
+            if len(list(tree.leaves())) <= hparams.max_len_train
+        ]
     print("Loaded {:,} training examples.".format(len(train_treebank)))
 
     print("Loading development trees from {}...".format(dev_path))
     dev_treebank = trees.load_trees(dev_path)
     if hparams.max_len_dev > 0:
-        dev_treebank = [tree for tree in dev_treebank if len(
-            list(tree.leaves())) <= hparams.max_len_dev]
+        dev_treebank = [
+            tree
+            for tree in dev_treebank
+            if len(list(tree.leaves())) <= hparams.max_len_dev
+        ]
     print("Loaded {:,} development examples.".format(len(dev_treebank)))
 
     print("Processing trees for training...")
@@ -200,10 +195,14 @@ def run_train(args, hparams):
 
     def print_vocabulary(name, vocab):
         special = {tokens.START, tokens.STOP, tokens.UNK}
-        print("{} ({:,}): {}".format(
-            name, vocab.size,
-            sorted(value for value in vocab.values if value in special) +
-            sorted(value for value in vocab.values if value not in special)))
+        print(
+            "{} ({:,}): {}".format(
+                name,
+                vocab.size,
+                sorted(value for value in vocab.values if value in special)
+                + sorted(value for value in vocab.values if value not in special),
+            )
+        )
 
     if args.print_vocabs:
         print_vocabulary("Tag", tag_vocab)
@@ -217,8 +216,7 @@ def run_train(args, hparams):
     if load_path is not None:
         print("Loading parameters from {}".format(load_path))
         info = torch_load(load_path)
-        parser = Lparser.ChartParser.from_spec(
-            info['spec'], info['state_dict'])
+        parser = Lparser.ChartParser.from_spec(info["spec"], info["state_dict"])
     else:
         parser = Lparser.ChartParser(
             tag_vocab,
@@ -230,21 +228,24 @@ def run_train(args, hparams):
 
     print("Initializing optimizer...")
     trainable_parameters = [
-        param for param in parser.parameters() if param.requires_grad]
+        param for param in parser.parameters() if param.requires_grad
+    ]
     trainer = torch.optim.Adam(
-        trainable_parameters, lr=1., betas=(0.9, 0.98), eps=1e-9)
+        trainable_parameters, lr=1.0, betas=(0.9, 0.98), eps=1e-9
+    )
     if load_path is not None:
-        trainer.load_state_dict(info['trainer'])
+        trainer.load_state_dict(info["trainer"])
 
     def set_lr(new_lr):
         for param_group in trainer.param_groups:
-            param_group['lr'] = new_lr
+            param_group["lr"] = new_lr
 
     assert hparams.step_decay, "Only step_decay schedule is supported"
 
     warmup_coeff = hparams.learning_rate / hparams.learning_rate_warmup_steps
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        trainer, 'max',
+        trainer,
+        "max",
         factor=hparams.step_decay_factor,
         patience=hparams.step_decay_patience,
         verbose=True,
@@ -256,7 +257,9 @@ def run_train(args, hparams):
             set_lr(iteration * warmup_coeff)
 
     clippable_parameters = trainable_parameters
-    grad_clip_threshold = np.inf if hparams.clip_grad_norm == 0 else hparams.clip_grad_norm
+    grad_clip_threshold = (
+        np.inf if hparams.clip_grad_norm == 0 else hparams.clip_grad_norm
+    )
 
     print("Training...")
     total_processed = 0
@@ -282,26 +285,31 @@ def run_train(args, hparams):
         dev_predicted = []
 
         for dev_start_index in range(0, len(dev_treebank), args.eval_batch_size):
-            subbatch_trees = dev_treebank[dev_start_index:
-                                          dev_start_index+args.eval_batch_size]
+            subbatch_trees = dev_treebank[
+                dev_start_index : dev_start_index + args.eval_batch_size
+            ]
             subbatch_sentences = [
-                [(leaf.tag, leaf.word) for leaf in tree.leaves()] for tree in subbatch_trees]
+                [(leaf.tag, leaf.word) for leaf in tree.leaves()]
+                for tree in subbatch_trees
+            ]
 
-            predicted,  _, = parser.parse_batch(subbatch_sentences)
+            (
+                predicted,
+                _,
+            ) = parser.parse_batch(subbatch_sentences)
             del _
 
             dev_predicted.extend([p.convert() for p in predicted])
-        dev_fscore = evaluate.evalb(
-            args.evalb_dir, dev_treebank, dev_predicted)
+        dev_fscore = evaluate.evalb(args.evalb_dir, dev_treebank, dev_predicted)
 
-        print("\n"
-              "dev-fscore {} "
-              "dev-elapsed {} "
-              "total-elapsed {}".format(
-                  dev_fscore,
-                  format_elapsed(dev_start_time),
-                  format_elapsed(start_time))
-              )
+        print(
+            "\n"
+            "dev-fscore {} "
+            "dev-elapsed {} "
+            "total-elapsed {}".format(
+                dev_fscore, format_elapsed(dev_start_time), format_elapsed(start_time)
+            )
+        )
 
         if dev_fscore.fscore > best_dev_fscore:
             if best_model_path is not None:
@@ -314,14 +322,18 @@ def run_train(args, hparams):
 
             best_dev_fscore = dev_fscore.fscore
             best_model_path = "{}_best_dev={:.2f}".format(
-                args.model_path_base, dev_fscore.fscore)
+                args.model_path_base, dev_fscore.fscore
+            )
             best_dev_processed = total_processed
             print("Saving new best model to {}...".format(best_model_path))
-            torch.save({
-                'spec': parser.spec,
-                'state_dict': parser.state_dict(),
-                'trainer': trainer.state_dict(),
-            }, best_model_path + ".pt")
+            torch.save(
+                {
+                    "spec": parser.spec,
+                    "state_dict": parser.state_dict(),
+                    "trainer": trainer.state_dict(),
+                },
+                best_model_path + ".pt",
+            )
 
     for epoch in itertools.count(start=1):
         if args.epochs is not None and epoch > args.epochs:
@@ -337,14 +349,16 @@ def run_train(args, hparams):
             parser.train()
 
             batch_loss_value = 0.0
-            batch_trees = train_parse[start_index:start_index +
-                                      args.batch_size]
+            batch_trees = train_parse[start_index : start_index + args.batch_size]
 
-            batch_sentences = [[(leaf.tag, leaf.word)
-                                for leaf in tree.leaves()] for tree in batch_trees]
-            for subbatch_sentences, subbatch_trees in parser.split_batch(batch_sentences, batch_trees, args.subbatch_max_tokens):
-                _, loss = parser.parse_batch(
-                    subbatch_sentences, subbatch_trees)
+            batch_sentences = [
+                [(leaf.tag, leaf.word) for leaf in tree.leaves()]
+                for tree in batch_trees
+            ]
+            for subbatch_sentences, subbatch_trees in parser.split_batch(
+                batch_sentences, batch_trees, args.subbatch_max_tokens
+            ):
+                _, loss = parser.parse_batch(subbatch_sentences, subbatch_trees)
 
                 loss = loss / len(batch_trees)
                 loss_value = float(loss.data.cpu().numpy())
@@ -356,27 +370,31 @@ def run_train(args, hparams):
                 current_processed += len(subbatch_trees)
 
             grad_norm = torch.nn.utils.clip_grad_norm_(
-                clippable_parameters, grad_clip_threshold)
+                clippable_parameters, grad_clip_threshold
+            )
 
             trainer.step()
 
-            print("\r"
-                  "epoch {:,} "
-                  "batch {:,}/{:,} "
-                  "processed {:,} "
-                  "batch-loss {:.4f} "
-                  "grad-norm {:.4f} "
-                  "epoch-elapsed {} "
-                  "total-elapsed {}".format(
-                      epoch,
-                      start_index // args.batch_size + 1,
-                      int(np.ceil(len(train_parse) / args.batch_size)),
-                      total_processed,
-                      batch_loss_value,
-                      grad_norm,
-                      format_elapsed(epoch_start_time),
-                      format_elapsed(start_time)),
-                  end="")
+            print(
+                "\r"
+                "epoch {:,} "
+                "batch {:,}/{:,} "
+                "processed {:,} "
+                "batch-loss {:.4f} "
+                "grad-norm {:.4f} "
+                "epoch-elapsed {} "
+                "total-elapsed {}".format(
+                    epoch,
+                    start_index // args.batch_size + 1,
+                    int(np.ceil(len(train_parse) / args.batch_size)),
+                    total_processed,
+                    batch_loss_value,
+                    grad_norm,
+                    format_elapsed(epoch_start_time),
+                    format_elapsed(start_time),
+                ),
+                end="",
+            )
             sys.stdout.flush()
 
             if current_processed >= check_every:
@@ -385,7 +403,9 @@ def run_train(args, hparams):
 
         # adjust learning rate at the end of an epoch
         if hparams.step_decay:
-            if (total_processed // args.batch_size + 1) > hparams.learning_rate_warmup_steps:
+            if (
+                total_processed // args.batch_size + 1
+            ) > hparams.learning_rate_warmup_steps:
                 scheduler.step(best_dev_fscore)
 
 
@@ -393,16 +413,15 @@ def run_test(args):
 
     test_path = args.test_ptb_path
 
-    if args.dataset == 'ctb':
+    if args.dataset == "ctb":
         test_path = args.test_ctb_path
 
     print("Loading model from {}...".format(args.model_path_base))
-    assert args.model_path_base.endswith(
-        ".pt"), "Only pytorch savefiles supported"
+    assert args.model_path_base.endswith(".pt"), "Only pytorch savefiles supported"
 
     info = torch_load(args.model_path_base)
-    assert 'hparams' in info['spec'], "Older savefiles not supported"
-    parser = Lparser.ChartParser.from_spec(info['spec'], info['state_dict'])
+    assert "hparams" in info["spec"], "Older savefiles not supported"
+    parser = Lparser.ChartParser.from_spec(info["spec"], info["state_dict"])
     parser.eval()
 
     print("Loading test trees from {}...".format(test_path))
@@ -412,18 +431,21 @@ def run_test(args):
     print("Parsing test sentences...")
     start_time = time.time()
 
-    punct_set = '.' '``' "''" ':' ','
+    punct_set = "." "``" "''" ":" ","
 
     parser.eval()
     test_predicted = []
     for start_index in range(0, len(test_treebank), args.eval_batch_size):
-        subbatch_trees = test_treebank[start_index:start_index +
-                                       args.eval_batch_size]
+        subbatch_trees = test_treebank[start_index : start_index + args.eval_batch_size]
 
-        subbatch_sentences = [[(leaf.tag, leaf.word)
-                               for leaf in tree.leaves()] for tree in subbatch_trees]
+        subbatch_sentences = [
+            [(leaf.tag, leaf.word) for leaf in tree.leaves()] for tree in subbatch_trees
+        ]
 
-        predicted, _, = parser.parse_batch(subbatch_sentences)
+        (
+            predicted,
+            _,
+        ) = parser.parse_batch(subbatch_sentences)
         del _
         test_predicted.extend([p.convert() for p in predicted])
 
@@ -436,15 +458,15 @@ def run_test(args):
         )
     )
 
+
 def run_parse(args):
 
     print("Loading model from {}...".format(args.model_path_base))
-    assert args.model_path_base.endswith(
-        ".pt"), "Only pytorch savefiles supported"
+    assert args.model_path_base.endswith(".pt"), "Only pytorch savefiles supported"
 
     info = torch_load(args.model_path_base)
-    assert 'hparams' in info['spec'], "Older savefiles not supported"
-    parser = Lparser.ChartParser.from_spec(info['spec'], info['state_dict'])
+    assert "hparams" in info["spec"], "Older savefiles not supported"
+    parser = Lparser.ChartParser.from_spec(info["spec"], info["state_dict"])
     parser.eval()
     print("Parsing sentences...")
     with open(args.input_path) as input_file:
@@ -452,8 +474,8 @@ def run_parse(args):
     sentences = [sentence.split() for sentence in sentences]
 
     # Parser does not do tagging, so use a dummy tag when parsing from raw text
-    if 'UNK' in parser.tag_vocab.indices:
-        dummy_tag = 'UNK'
+    if "UNK" in parser.tag_vocab.indices:
+        dummy_tag = "UNK"
     else:
         dummy_tag = parser.tag_vocab.value(0)
 
@@ -461,8 +483,8 @@ def run_parse(args):
 
     def save_data(syntree_pred, cun):
         appent_string = "_" + str(cun) + ".txt"
-        if args.output_path_synconst != '-':
-            with open(args.output_path_synconst + appent_string, 'w') as output_file:
+        if args.output_path_synconst != "-":
+            with open(args.output_path_synconst + appent_string, "w") as output_file:
                 for tree in syntree_pred:
                     output_file.write("{}\n".format(tree.pred_linearize()))
             print("Output written to:", args.output_path_synconst)
@@ -470,11 +492,11 @@ def run_parse(args):
     syntree_pred = []
     cun = 0
     for start_index in range(0, len(sentences), args.eval_batch_size):
-        subbatch_sentences = sentences[start_index:start_index +
-                                       args.eval_batch_size]
+        subbatch_sentences = sentences[start_index : start_index + args.eval_batch_size]
 
-        subbatch_sentences = [[(dummy_tag, word) for word in sentence]
-                              for sentence in subbatch_sentences]
+        subbatch_sentences = [
+            [(dummy_tag, word) for word in sentence] for sentence in subbatch_sentences
+        ]
         syntree, _ = parser.parse_batch(subbatch_sentences)
         syntree_pred.extend(syntree)
         if args.save_per_sentences <= len(syntree_pred) and args.save_per_sentences > 0:
@@ -500,20 +522,15 @@ def main():
     subparser.add_argument("--embedding-type", default="random")
 
     subparser.add_argument("--model-name", default="test")
-    subparser.add_argument(
-        "--evalb-dir", default="./EVALB/")
+    subparser.add_argument("--evalb-dir", default="./EVALB/")
 
     subparser.add_argument("--dataset", default="ptb")
 
-    subparser.add_argument(
-        "--train-ptb-path", default="./data/ptb/02-21.10way.clean")
-    subparser.add_argument(
-        "--dev-ptb-path", default="./data/ptb/22.auto.clean")
+    subparser.add_argument("--train-ptb-path", default="./data/ptb/02-21.10way.clean")
+    subparser.add_argument("--dev-ptb-path", default="./data/ptb/22.auto.clean")
 
-    subparser.add_argument(
-        "--train-ctb-path", default="./data/ctb/train.txt")
-    subparser.add_argument(
-        "--dev-ctb-path", default="./data/ctb/dev.txt")
+    subparser.add_argument("--train-ctb-path", default="./data/ctb/train.txt")
+    subparser.add_argument("--dev-ctb-path", default="./data/ctb/dev.txt")
 
     subparser.add_argument("--batch-size", type=int, default=250)
     subparser.add_argument("--subbatch-max-tokens", type=int, default=2000)
@@ -526,20 +543,16 @@ def main():
     subparser.set_defaults(callback=run_test)
     subparser.add_argument("--model-path-base", required=True)
     subparser.add_argument("--evalb-dir", default="./EVALB/")
-    subparser.add_argument(
-        "--embedding-path", default="./data/glove/glove.gz")
+    subparser.add_argument("--embedding-path", default="./data/glove/glove.gz")
     subparser.add_argument("--dataset", default="ptb")
-    subparser.add_argument("--test-ptb-path",
-                           default="./data/ptb/23.auto.clean")
-    subparser.add_argument("--test-ctb-path",
-                           default="./data/ctb/test.txt")
+    subparser.add_argument("--test-ptb-path", default="./data/ptb/23.auto.clean")
+    subparser.add_argument("--test-ctb-path", default="./data/ctb/test.txt")
     subparser.add_argument("--eval-batch-size", type=int, default=100)
 
     subparser = subparsers.add_parser("parse")
     subparser.set_defaults(callback=run_parse)
     subparser.add_argument("--model-path-base", required=True)
-    subparser.add_argument(
-        "--embedding-path", default="./data/ptb/glove.gz")
+    subparser.add_argument("--embedding-path", default="./data/ptb/glove.gz")
     subparser.add_argument("--dataset", default="ptb")
     subparser.add_argument("--save-per-sentences", type=int, default=-1)
     subparser.add_argument("--input-path", type=str, required=True)

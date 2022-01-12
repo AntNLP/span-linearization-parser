@@ -90,7 +90,7 @@ Contents of this README:
 
 [0] COPYRIGHT
 
-The authors abandon the copyright of this program. Everyone is 
+The authors abandon the copyright of this program. Everyone is
 permitted to copy and distribute the program or a portion of the program
 with no charge and no restrictions unless it is harmful to someone.
 
@@ -110,13 +110,13 @@ differences from system to system. This is a program to parametarize
 such minor differences and to give an informative result.
 
 "evalb" evaluates bracketing accuracy in a test-file against a gold-file.
-It returns recall, precision, tagging accuracy. It uses an identical 
+It returns recall, precision, tagging accuracy. It uses an identical
 algorithm to that used in (Collins ACL97).
 
 
 [2] Installation and Run
 
-To compile the scorer, type 
+To compile the scorer, type
 
 > make
 
@@ -125,7 +125,7 @@ To run the scorer:
 
 > evalb -p Parameter_file Gold_file Test_file
 
- 
+
 For example to use the sample files:
 
 > evalb -p sample.prm sample.gld sample.tst
@@ -138,10 +138,10 @@ You can specify system parameters in the command line options.
 Other options concerning to evaluation metrix should be specified
 in parameter file, described later.
 
-        -p param_file  parameter file                        
-        -d             debug mode                            
-        -e n           number of error to kill (default=10)  
-        -h             help                                  
+        -p param_file  parameter file
+        -d             debug mode
+        -e n           number of error to kill (default=10)
+        -h             help
 
 
 
@@ -155,7 +155,7 @@ example:
 ============================================================================
    1    8    0  100.00 100.00     5      5    5      0      6     5    83.33
 
-At the end of the output the === Summary === section gives statistics 
+At the end of the output the === Summary === section gives statistics
 for all sentences, and for sentences <=40 words in length. The summary
 contains the following information:
 
@@ -165,7 +165,7 @@ ii)  Number of Error/Skip sentences -- should both be 0 if there is no
     problem with the parsed/gold files.
 
 iii) Number of valid sentences = Number of sentences - Number of Error/Skip
-    sentences 
+    sentences
 
 iv)  Bracketing recall =     (number of correct constituents)
                          ----------------------------------------
@@ -176,7 +176,7 @@ v)   Bracketing precision = (number of correct constituents)
                          (number of constituents in the parsed file)
 
 vi)  Complete match = percentaage of sentences where recall and precision are
-    both 100%. 
+    both 100%.
 
 vii) Average crossing = (number of constituents crossing a goldfile constituen
                          ----------------------------------------------------
@@ -200,7 +200,7 @@ The gold and parsed files are in a format similar to this:
 
 To create a gold file from the treebank:
 
-tgrep -wn '/.*/' | tgrep_proc.prl 
+tgrep -wn '/.*/' | tgrep_proc.prl
 
 will produce a goldfile in the required format.  ("tgrep -wn '/.*/'" prints
 parse trees, "tgrep_process.prl" just skips blank lines).
@@ -215,20 +215,20 @@ tgrep -wn '/.*/' | tail +90895 | tgrep_process.prl | sed 2416q > sec23.gold
 
 
 The .prm file sets options regarding the scoring method. COLLINS.prm gives
-the same scoring behaviour as the scorer used in (Collins 97). The options 
-chosen were: 
+the same scoring behaviour as the scorer used in (Collins 97). The options
+chosen were:
 
 1) LABELED 1
 
 to give labelled precision/recall figures, i.e. a constituent must have the
 same span *and* label as a constituent in the goldfile.
 
-2) DELETE_LABEL TOP   
+2) DELETE_LABEL TOP
 
-Don't count the "TOP" label (which is always given in the output of tgrep) 
-when scoring. 
+Don't count the "TOP" label (which is always given in the output of tgrep)
+when scoring.
 
-3) DELETE_LABEL -NONE-  
+3) DELETE_LABEL -NONE-
 
 Remove traces (and all constituents which dominate nothing but traces) when
 scoring. For example
@@ -265,7 +265,7 @@ Count ADVP and PRT as being the same label when scoring.
 1) The scorer initially processes the files to remove all nodes specified
 by DELETE_LABEL in the .prm file. It also recursively removes nodes which
 dominate nothing due to all their children being removed. For example, if
--NONE- is specified as a label to be deleted, 
+-NONE- is specified as a label to be deleted,
 
 .... (VP (VBD reported) (SBAR (-NONE- 0) (S (-NONE- *T*-1)))) (. .)))
 
@@ -282,14 +282,14 @@ would be processed to give
 deleted by a DELETE_LABEL specification in the .prm file. (For example, for
 COLLINS.prm, punctuation tagged as "," ":" etc. would not be included).
 
-4) When calculating the length of a sentence, all words with POS tags not 
+4) When calculating the length of a sentence, all words with POS tags not
 included in the "DELETE_LABEL_FOR_LENGTH" list in the .prm file are
 counted. (For COLLINS.prm, only "-NONE-" is specified in this list, so
 traces are removed before calculating the length of the sentence).
 
 5) There are some subtleties in scoring when either the goldfile or parsed
 file contains multiple constituents for the same span which have the same
-non-terminal label. e.g. (NP (NP the man)) If the goldfile contains n 
+non-terminal label. e.g. (NP (NP the man)) If the goldfile contains n
 constituents for the same span, and the parsed file contains m constituents
 with that nonterminal, the scorer works as follows:
 

@@ -7,6 +7,7 @@ from collections import defaultdict
 
 import trees
 
+
 class FScore(object):
     def __init__(self, recall, precision, fscore, complete_match, tagging_accuracy=100):
         self.recall = recall
@@ -18,16 +19,25 @@ class FScore(object):
     def __str__(self):
         if self.tagging_accuracy < 100:
             return "(Recall={:.2f}, Precision={:.2f}, FScore={:.2f}, CompleteMatch={:.2f}, TaggingAccuracy={:.2f})".format(
-                self.recall, self.precision, self.fscore, self.complete_match, self.tagging_accuracy)
+                self.recall,
+                self.precision,
+                self.fscore,
+                self.complete_match,
+                self.tagging_accuracy,
+            )
         else:
             return "(Recall={:.2f}, Precision={:.2f}, FScore={:.2f}, CompleteMatch={:.2f})".format(
-                self.recall, self.precision, self.fscore, self.complete_match)
+                self.recall, self.precision, self.fscore, self.complete_match
+            )
+
 
 def evalb(evalb_dir, gold_trees, predicted_trees, ref_gold_path=None):
     assert os.path.exists(evalb_dir)
     evalb_program_path = os.path.join(evalb_dir, "evalb")
     evalb_spmrl_program_path = os.path.join(evalb_dir, "evalb_spmrl")
-    assert os.path.exists(evalb_program_path) or os.path.exists(evalb_spmrl_program_path)
+    assert os.path.exists(evalb_program_path) or os.path.exists(
+        evalb_spmrl_program_path
+    )
 
     if os.path.exists(evalb_program_path):
         evalb_param_path = os.path.join(evalb_dir, "nk.prm")
@@ -47,7 +57,8 @@ def evalb(evalb_dir, gold_trees, predicted_trees, ref_gold_path=None):
         assert len(gold_leaves) == len(predicted_leaves)
         assert all(
             gold_leaf.word == predicted_leaf.word
-            for gold_leaf, predicted_leaf in zip(gold_leaves, predicted_leaves))
+            for gold_leaf, predicted_leaf in zip(gold_leaves, predicted_leaves)
+        )
 
     temp_dir = tempfile.TemporaryDirectory(prefix="evalb-")
     gold_path = os.path.join(temp_dir.name, "gold.txt")
@@ -100,9 +111,8 @@ def evalb(evalb_dir, gold_trees, predicted_trees, ref_gold_path=None):
                 break
 
     success = (
-        not math.isnan(fscore.fscore) or
-        fscore.recall == 0.0 or
-        fscore.precision == 0.0)
+        not math.isnan(fscore.fscore) or fscore.recall == 0.0 or fscore.precision == 0.0
+    )
 
     if success:
         temp_dir.cleanup()

@@ -1,6 +1,7 @@
-__author__ = 'max'
+__author__ = "max"
 
 import re
+
 MAX_CHAR_LENGTH = 45
 NUM_CHAR_PAD = 2
 

@@ -23,7 +23,8 @@ class InternalTreebankNode(TreebankNode):
 
     def linearize(self):
         return "({} {})".format(
-            self.label, " ".join(child.linearize() for child in self.children))
+            self.label, " ".join(child.linearize() for child in self.children)
+        )
 
     def leaves(self):
         for child in self.children:
@@ -34,7 +35,8 @@ class InternalTreebankNode(TreebankNode):
         sublabels = [self.label]
 
         while len(tree.children) == 1 and isinstance(
-                tree.children[0], InternalTreebankNode):
+            tree.children[0], InternalTreebankNode
+        ):
             tree = tree.children[0]
             sublabels.append(tree.label)
 
@@ -70,7 +72,15 @@ class LeafTreebankNode(TreebankNode):
         yield self
 
     def convert(self, index=0):
-        return LeafParseNode(index, self.tag, self.word, self.lbound, self.rbound, self.llabel, self.rlabel)
+        return LeafParseNode(
+            index,
+            self.tag,
+            self.word,
+            self.lbound,
+            self.rbound,
+            self.llabel,
+            self.rlabel,
+        )
 
 
 class ParseNode(object):
@@ -89,8 +99,8 @@ class InternalParseNode(ParseNode):
         assert children
         assert len(children) > 1 or isinstance(children[0], LeafParseNode)
         assert all(
-            left.right == right.left
-            for left, right in zip(children, children[1:]))
+            left.right == right.left for left, right in zip(children, children[1:])
+        )
         self.children = tuple(children)
 
         self.left = children[0].left
@@ -159,7 +169,15 @@ class LeafParseNode(ParseNode):
         return self
 
     def convert(self):
-        return LeafTreebankNode(self.left, self.tag, self.word, self.lbound, self.rbound, self.llabel, self.rlabel)
+        return LeafTreebankNode(
+            self.left,
+            self.tag,
+            self.word,
+            self.lbound,
+            self.rbound,
+            self.llabel,
+            self.rlabel,
+        )
 
 
 def load_trees(path, strip_top=True):
@@ -183,8 +201,8 @@ def load_trees(path, strip_top=True):
 
             label = tokens[index]
 
-            if label != '-NONE-' and '-' in label:
-                label = label.split('-')[0]
+            if label != "-NONE-" and "-" in label:
+                label = label.split("-")[0]
 
             index += 1
 
@@ -196,9 +214,18 @@ def load_trees(path, strip_top=True):
             else:
                 word = tokens[index]
                 index += 1
-                if label != '-NONE-':
-                    trees.append(LeafTreebankNode(
-                        word_idx, label, word, lbound=0, rbound=0, llabel=(), rlabel=()))
+                if label != "-NONE-":
+                    trees.append(
+                        LeafTreebankNode(
+                            word_idx,
+                            label,
+                            word,
+                            lbound=0,
+                            rbound=0,
+                            llabel=(),
+                            rlabel=(),
+                        )
+                    )
                     word_idx += 1
 
             while paren_count > 0:
@@ -225,14 +252,14 @@ def load_trees(path, strip_top=True):
     def process_NONE(tree):
         if isinstance(tree, LeafTreebankNode):
             label = tree.tag
-            if label == '-NONE-':
+            if label == "-NONE-":
                 return None
             else:
                 return tree
 
         tr = []
         label = tree.label
-        if label == '-NONE-':
+        if label == "-NONE-":
             return None
         for node in tree.children:
             new_node = process_NONE(node)
@@ -298,7 +325,15 @@ def load_trees(path, strip_top=True):
 
     def process_bound(root_tree, tree, lbounds, rbounds):
         if isinstance(tree, LeafTreebankNode):
-            return LeafTreebankNode(tree.left, tree.tag, tree.word, lbounds[tree.left], rbounds[tree.left], root_tree.oracle_label(lbounds[tree.left], tree.right), root_tree.oracle_label(tree.left, rbounds[tree.left]))
+            return LeafTreebankNode(
+                tree.left,
+                tree.tag,
+                tree.word,
+                lbounds[tree.left],
+                rbounds[tree.left],
+                root_tree.oracle_label(lbounds[tree.left], tree.right),
+                root_tree.oracle_label(tree.left, rbounds[tree.left]),
+            )
 
         tr = []
         label = tree.label
@@ -316,8 +351,7 @@ def load_trees(path, strip_top=True):
         new_tree = process_NONE(tree)
         lbounds = get_lbound(new_tree)
         rbounds = get_rbound(lbounds, 0, len(lbounds))
-        new_tree = process_bound(
-            new_tree.convert(), new_tree, lbounds, rbounds)
+        new_tree = process_bound(new_tree.convert(), new_tree, lbounds, rbounds)
         new_trees.append(new_tree)
 
     return new_trees
